@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Emilia Learning Dashboard</title>
+<style>
+  :root{
+    /* Palette pulled directly from Discovery Lab's live homepage
+       (https://educadug.github.io/discovery-lab/, engine/style.css?v=12),
+       which renders with :root, [data-theme="earth"] - "Environmental Science -
+       soil, water, air". Confirmed against the fetched stylesheet, not invented. */
+    --paper:#F2EFE6; --surface:#FBF9F3; --surface-2:#EAE6D9;
+    --ink:#1D211C; --ink-2:#4A5148; --ink-3:#757C72;
+    --line:#1D211C24; --line-strong:#1D211C40;
+    --accent:#40634C; --accent-hi:#517B5E; --accent-ink:#FBF9F3;
+    --accent-wash:#40634C14;
+    --signal:#B5551F; --signal-wash:#B5551F14;
+    --positive:#2F6B45; --caution:#A66B00;
+    --radius:14px; --radius-lg:22px;
+    --font-display:"Fraunces","Iowan Old Style",Georgia,serif;
+    --font-ui:"Public Sans",ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+    --font-data:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--font-ui);background-color:var(--paper);color:var(--ink);line-height:1.55;
+    /* Faint field-notebook grid, same recipe as the Discovery Lab homepage body rule. */
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:48px 48px,48px 48px;
+    background-position:-1px -1px;
+  }
+  a{color:var(--signal);}
+  .eyebrow-label{font-family:var(--font-data);font-size:0.72rem;text-transform:uppercase;
+    letter-spacing:.08em;color:var(--signal);display:inline-flex;align-items:center;gap:6px;}
+  .target-icon{display:inline-block;width:14px;height:14px;vertical-align:middle;color:var(--signal);}
+  .shell{max-width:920px;margin:0 auto;padding:0 20px;}
+  header.site{background:var(--surface);border-bottom:1px dashed var(--line-strong);padding:22px 0;}
+  header.site h1{font-family:var(--font-display);font-size:1.9rem;margin:0 0 4px;
+    font-variation-settings:"wght" 600;}
+  header.site p{margin:0;color:var(--ink-2);font-size:0.95rem;}
+  nav.tabs{display:flex;gap:8px;flex-wrap:wrap;background:var(--surface);border-bottom:1px dashed var(--line-strong);
+    padding:10px 0;position:sticky;top:0;z-index:5;}
+  nav.tabs .shell{display:flex;gap:8px;flex-wrap:wrap;}
+  .tab-btn{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);
+    padding:9px 14px;border-radius:999px;font:inherit;font-family:var(--font-data);
+    text-transform:uppercase;letter-spacing:.04em;font-weight:700;font-size:0.78rem;cursor:pointer;}
+  .tab-btn.active{background:var(--signal);color:var(--accent-ink);border-color:var(--signal);}
+  main{padding:26px 0 60px;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+  h2.panel-title{font-family:var(--font-display);font-size:1.5rem;margin:0 0 6px;}
+  .panel-sub{color:var(--ink-2);margin:0 0 20px;font-size:0.95rem;max-width:64ch;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);
+    padding:18px 20px;margin-bottom:16px;}
+  .card + .card{border-top:1px dashed var(--line-strong);}
+  .card h3{margin:0 0 8px;font-size:1.05rem;font-family:var(--font-display);}
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+  .stat{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:var(--radius);padding:14px 16px;}
+  .stat .num{font-family:var(--font-data);font-size:1.6rem;font-weight:700;color:var(--accent);}
+  .stat .label{font-size:0.8rem;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em;}
+  .focus-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+  .focus-card{border-radius:var(--radius);padding:16px;border:1px solid var(--line);}
+  .focus-card.win{border-left:4px solid var(--positive);background:#2F6B4508;}
+  .focus-card.tonight{border-left:4px solid var(--signal);background:var(--signal-wash);}
+  .focus-card.edge{border-left:4px solid var(--caution);background:#A66B0010;}
+  .focus-card .eyebrow{font-family:var(--font-data);font-size:.72rem;text-transform:uppercase;
+    letter-spacing:.08em;color:var(--ink-2);margin-bottom:6px;}
+  .quote-card{border-left:3px solid var(--accent);padding:12px 16px;margin-bottom:10px;background:var(--surface);
+    border-radius:var(--radius);}
+  .quote-card blockquote{margin:0 0 6px;font-family:var(--font-display);font-size:1.05rem;font-style:italic;color:var(--ink);}
+  .quote-card .interp{font-size:0.85rem;color:var(--ink-2);}
+  .pill{display:inline-block;font-family:var(--font-data);font-size:0.72rem;text-transform:uppercase;
+    letter-spacing:.06em;padding:3px 10px;border-radius:999px;border:1px solid var(--line-strong);color:var(--ink-2);
+    background:var(--surface-2);margin-right:6px;}
+  .pill.stage-Emerging{color:#A66B00;border-color:#A66B0055;background:#A66B0014;}
+  .pill.stage-Developing{color:#B5551F;border-color:#B5551F55;background:#B5551F14;}
+  .pill.stage-Growing{color:#517B5E;border-color:#517B5E55;background:#517B5E14;}
+  .pill.stage-Secure{color:#2F6B45;border-color:#2F6B4555;background:#2F6B4514;}
+  .chart-card svg{width:100%;height:auto;display:block;}
+  .chart-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:0.82rem;color:var(--ink-2);}
+  .legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+  .evidence-pop{display:none;margin-top:10px;padding:10px 12px;border-radius:var(--radius);
+    background:var(--surface-2);font-size:0.86rem;color:var(--ink-2);}
+  .evidence-pop.show{display:block;}
+  .milestone{display:flex;gap:12px;margin-bottom:14px;}
+  .milestone .dot{width:10px;height:10px;border-radius:50%;background:var(--signal);flex:0 0 auto;margin-top:6px;}
+  .milestone .date{font-family:var(--font-data);font-size:0.78rem;color:var(--ink-3);}
+  .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .profile-grid .item{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;}
+  .profile-grid .item .k{font-family:var(--font-data);font-size:0.72rem;text-transform:uppercase;color:var(--ink-2);
+    margin-bottom:4px;}
+  .basis-note{font-size:0.8rem;color:var(--ink-3);margin-top:6px;}
+  ul.plain{margin:0;padding-left:18px;}
+  ul.plain li{margin-bottom:6px;}
+  details.session{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;background:var(--surface);}
+  details.session summary{padding:12px 16px;cursor:pointer;font-weight:700;list-style:none;font-family:var(--font-display);}
+  details.session summary::-webkit-details-marker{display:none;}
+  details.session summary .sdate{font-family:var(--font-data);font-size:0.78rem;color:var(--ink-2);
+    font-weight:400;display:block;text-transform:uppercase;letter-spacing:.04em;}
+  details.session .session-body{padding:0 16px 16px;border-top:1px dashed var(--line-strong);}
+  details.session .session-body h4{font-size:0.85rem;margin:14px 0 6px;color:var(--ink-2);text-transform:uppercase;
+    letter-spacing:.03em;}
+  .resource-link{display:block;margin-bottom:8px;}
+  .resource-link a{font-weight:700;word-break:break-word;}
+  .resource-link .note{font-size:0.85rem;color:var(--ink-2);}
+  .about-portrait-row{display:flex;gap:18px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+  .btn-linkedin{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--accent-ink);
+    padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700;font-size:0.9rem;}
+  .about-hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;margin-bottom:22px;}
+  .about-photo-wrap{position:relative;width:168px;height:168px;margin:6px 0 8px;display:flex;align-items:center;justify-content:center;}
+  .about-photo-wrap::before{content:"";position:absolute;inset:-22px;border-radius:50%;
+    background:radial-gradient(circle,#40634C55 0%,#40634C22 40%,transparent 72%);}
+  .about-photo-wrap::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--accent-hi);opacity:.65;}
+  .about-photo{position:relative;width:168px;height:168px;border-radius:50%;object-fit:cover;
+    border:3px solid var(--surface);box-shadow:0 0 0 1px var(--line-strong);z-index:1;}
+  .about-heading{font-family:var(--font-display);font-size:1.9rem;margin:2px 0 0;font-variation-settings:"wght" 600;}
+  .about-subheading{color:var(--ink-2);max-width:52ch;margin:0;font-size:0.98rem;}
+  .about-chip-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:6px 0 4px;}
+  .about-chip{font-family:var(--font-data);font-size:0.72rem;text-transform:uppercase;letter-spacing:.05em;
+    padding:5px 12px;border-radius:999px;border:1px solid var(--line-strong);color:var(--ink-2);background:var(--surface-2);}
+  .about-closing h3{margin:0 0 6px;font-family:var(--font-display);font-size:1.1rem;}
+  footer.disclaimer{border-top:1px solid var(--line);margin-top:24px;padding-top:16px;font-size:0.8rem;color:var(--ink-3);}
+  @media (max-width:640px){
+    .stat-row,.focus-row,.profile-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<header class="site">
+  <div class="shell">
+    <h1>Emilia's Learning Dashboard</h1>
+    <p>A voluntary, supplementary learning resource from Mr. Guevara. Please refer to Canvas / the Learning Lab for grades, deadlines and official progress reports.</p>
+  </div>
+</header>
+<nav class="tabs">
+  <div class="shell">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="progress">Progress</button>
+    <button class="tab-btn" data-tab="helpathome">Help at Home</button>
+    <button class="tab-btn" data-tab="sessions">Sessions</button>
+    <button class="tab-btn" data-tab="about">About</button>
+  </div>
+</nav>
+<main class="shell">
+
+  <section class="panel active" id="tab-overview"></section>
+  <section class="panel" id="tab-progress"></section>
+  <section class="panel" id="tab-helpathome"></section>
+  <section class="panel" id="tab-sessions"></section>
+  <section class="panel" id="tab-about"></section>
+
+</main>
+
+<script id="dashboard-v2-data" type="application/json">{
+  "student_first_name": "Emilia",
+  "programme": "",
+  "canvas_note": "Please refer to Canvas for quantitative information such as grades, deadlines, submitted work, and formal assessment data.",
+  "dashboard_purpose_note": "This dashboard is a voluntary teaching resource created by Mr. Guevara to show the student's longer-term learning journey, recurring patterns, and next steps across lessons.",
+  "professional_observation_note": "The learning notes in this dashboard are Mr. Guevara's professional observations based on lessons. They are not fixed labels, diagnoses, grades, or formal assessment results.",
+  "stats": {
+    "sessions_logged": 1,
+    "distinct_skills_tried": 3,
+    "milestones_hit": 1
+  },
+  "skill_threads": {
+    "Critical thinking": [
+      {
+        "session_date_iso": "2026-11-11",
+        "session_date": "11 November 2026",
+        "lesson_title": "Onboarding And Living Organisms",
+        "stage": "Developing",
+        "evidence": "Explained that respiration is not the same as breathing and answered all five true or false statements correctly."
+      }
+    ],
+    "Initiative and self-direction": [
+      {
+        "session_date_iso": "2026-11-11",
+        "session_date": "11 November 2026",
+        "lesson_title": "Onboarding And Living Organisms",
+        "stage": "Emerging",
+        "evidence": "Explained that respiration is not the same as breathing and answered all five true or false statements correctly."
+      }
+    ],
+    "Communication": [
+      {
+        "session_date_iso": "2026-11-11",
+        "session_date": "11 November 2026",
+        "lesson_title": "Onboarding And Living Organisms",
+        "stage": "Emerging",
+        "evidence": "Explained that respiration is not the same as breathing and answered all five true or false statements correctly."
+      }
+    ]
+  },
+  "milestones": [
+    {
+      "session_date": "11 November 2026",
+      "session_date_iso": "2026-11-11",
+      "title": "Started Edexcel IGCSE Biology",
+      "detail": "Emilia began the two-year course with a clear plan for past paper practice and the goal of becoming a doctor."
+    }
+  ],
+  "learning_profile": {
+    "based_on_sessions": 1,
+    "engages_best_when": "",
+    "responds_well_to": "",
+    "often_curious_about": "",
+    "currently_trying": ""
+  },
+  "voice_quotes": [
+    {
+      "quote": "I know it's... respiration is not the same as breathing.",
+      "session_date": "11 November 2026",
+      "lesson_title": "Onboarding And Living Organisms"
+    }
+  ],
+  "sessions": [
+    {
+      "session_date_iso": "2026-11-11",
+      "session_date": "11 November 2026",
+      "lesson_title": "Onboarding And Living Organisms",
+      "subject": "Biology",
+      "summary": "In the first lesson we agreed how to work together, looked at the exam papers and the hours available, and found past papers and revision resources. Emilia chose to have the biology taught in lessons and to practise past papers alone. We started Chapter 1 with the eight characteristics of living organisms and the five kingdoms, and Emilia answered five true or false statements correctly.",
+      "aim": "To welcome Emilia to the course, agree how we will work together over the next two years, and begin Chapter 1 by learning the eight characteristics that all living organisms share.",
+      "big_win": "Explained that respiration is not the same as breathing and answered all five true or false statements correctly.",
+      "next_priority": "Draw memory icons for the eight characteristics, read the specification and find out how the exam will be taken.",
+      "current_unit": "Chapter 1 of the Edexcel International GCSE Biology specification: characteristics of living organisms and the five kingdoms.",
+      "student_pacing": "This was the first lesson, so Emilia is on pace. Emilia is enrolled for 25 of the expected 50 hours, and a second block of 25 hours will be needed to finish the course. I have asked for about one hour a week of past paper practice outside the lessons, starting in about two weeks.",
+      "lesson_engagement": "Emilia was polite, attentive and willing to answer, even when the connection was poor, and joined in all the activities.",
+      "additional_notes": "Emilia is enrolled for 25 of the expected 50 hours. The exam is likely to be in May 2028 and the family needs to ask the CGA team how and where it will be taken. I am away for the week of about 14 December. Canvas and the Learning Lab remain the source of truth for grades, deadlines and submitted work.",
+      "student_voice": "Emilia said, \"I know it's... respiration is not the same as breathing.\"",
+      "home_support": [
+        "Ask Emilia to name the eight characteristics of living organisms.",
+        "Ask what the difference is between respiration and breathing."
+      ],
+      "extension_task": "Choose three objects around you, decide which are living and check each against the eight characteristics. Then think about whether a flame or a car could be called living and say which characteristics fail.",
+      "family_friendly_science_explanation": "Scientists say something is alive when it moves, respires, senses its surroundings, controls its internal conditions, grows, reproduces, gets rid of waste and takes in nutrition. Respiration is not breathing. Breathing moves air in and out of the body, while respiration is the chemical process in every cell that releases energy from food.",
+      "ideas_we_are_refining": "",
+      "strengths": [
+        "Recalling prior learning from school",
+        "Working out minutes per mark quickly",
+        "Organisation and a clear goal of becoming a doctor"
+      ],
+      "areas_for_growth": [
+        "Giving fuller answers in sentences",
+        "Learning the full Mrs Gren list including control",
+        "Finding out how and where the exam will be taken"
+      ],
+      "student_glows": [
+        "Explained that respiration is not the same as breathing without being prompted.",
+        "Worked out minutes per mark for the exam papers.",
+        "Answered all five true or false statements correctly.",
+        "Arrived with a biology notebook and a clear goal of becoming a doctor."
+      ],
+      "student_grows": [
+        "Giving fuller answers in sentences.",
+        "Learning the full Mrs Gren list including control.",
+        "Finding out how and where the IGCSE exam will be taken."
+      ],
+      "skills_observed": [
+        "recalling the characteristics of living organisms",
+        "distinguishing respiration from breathing",
+        "calculating minutes per mark",
+        "using Zoom annotation tools"
+      ],
+      "next_steps": [
+        "Draw a memory icon for each of the eight characteristics",
+        "Read the opening pages of the specification and note three questions",
+        "Ask the CGA team and family about the exam arrangements"
+      ],
+      "resources": [
+        {
+          "title": "Edexcel International GCSE Biology (2017) - Pearson qualifications",
+          "url": "https://qualifications.pearson.com/en/qualifications/edexcel-international-gcses/international-gcse-biology-2017.html",
+          "note": "Use this to find the specification, past papers and mark schemes."
+        },
+        {
+          "title": "IGCSE Biology Revision - Save My Exams",
+          "url": "https://www.savemyexams.com/igcse/biology/",
+          "note": "Use this for revision notes and past paper questions after each topic."
+        },
+        {
+          "title": "Kingdom (biology) Facts for Kids - Kiddle",
+          "url": "https://kids.kiddle.co/Kingdom_(biology)",
+          "note": "Read the overview together and ask Emilia to name the five kingdoms."
+        }
+      ],
+      "assignments_outstanding": [],
+      "raw_session": {
+        "session_date": "11 November 2026",
+        "session_date_iso": "2026-11-11",
+        "lesson_title": "Onboarding And Living Organisms",
+        "summary": "In the first lesson we agreed how to work together, looked at the exam papers and the hours available, and found past papers and revision resources. Emilia chose to have the biology taught in lessons and to practise past papers alone. We started Chapter 1 with the eight characteristics of living organisms and the five kingdoms, and Emilia answered five true or false statements correctly.",
+        "aim": "To welcome Emilia to the course, agree how we will work together over the next two years, and begin Chapter 1 by learning the eight characteristics that all living organisms share.",
+        "headline_insight": "Emilia arrived organised and motivated, already knows that respiration is not breathing, and has agreed to carry out regular past paper practice outside the lessons.",
+        "current_focus": "Characteristics of living organisms and the five kingdoms in Chapter 1",
+        "big_win": "Explained that respiration is not the same as breathing and answered all five true or false statements correctly.",
+        "next_priority": "Draw memory icons for the eight characteristics, read the specification and find out how the exam will be taken.",
+        "engagement_status": "Polite, attentive and willing to answer, even when the connection was poor.",
+        "why_this_matters": "Knowing what the course and exam ask for from the first day helps Emilia use the limited lesson hours and independent practice well.",
+        "progress_since_last_update": "First lesson of the course, so this is the starting point.",
+        "home_support": [
+          "Ask Emilia to name the eight characteristics of living organisms.",
+          "Ask what the difference is between respiration and breathing."
+        ],
+        "student_voice": "Emilia said, \"I know it's... respiration is not the same as breathing.\"",
+        "upcoming_focus": [
+          "Memory icons for the eight characteristics",
+          "Reading the specification",
+          "Starting past paper practice in about two weeks"
+        ],
+        "strengths": [
+          "Recalling prior learning from school",
+          "Working out minutes per mark quickly",
+          "Organisation and a clear goal of becoming a doctor"
+        ],
+        "areas_for_growth": [
+          "Giving fuller answers in sentences",
+          "Learning the full Mrs Gren list including control",
+          "Finding out how and where the exam will be taken"
+        ],
+        "next_steps": [
+          "Draw a memory icon for each of the eight characteristics",
+          "Read the opening pages of the specification and note three questions",
+          "Ask the CGA team and family about the exam arrangements"
+        ],
+        "skills_observed": [
+          "recalling the characteristics of living organisms",
+          "distinguishing respiration from breathing",
+          "calculating minutes per mark",
+          "using Zoom annotation tools"
+        ],
+        "engagement": "Polite, attentive and willing to answer throughout, and joined in all the activities.",
+        "misconceptions_noticed": "Could not remember what the C in Mrs Gren stands for and had not met the word protoctists. Correctly said that respiration is not breathing.",
+        "confidence_level": "Calm and confident answering questions in English, with brief answers, so I will keep asking for fuller explanations as the content becomes more demanding.",
+        "successful_teaching_strategies": [
+          "connecting new ideas to what Emilia already knew",
+          "a mnemonic from school",
+          "short questions followed by a quick true or false check"
+        ],
+        "adaptation_to_reach_full_potential": "Emilia responded well to short questions that connect to something already known. I will keep building on that, ask for a sentence of explanation and link the content to the exam and the goal of becoming a doctor.",
+        "extension_task": "Choose three objects around you, decide which are living and check each against the eight characteristics. Then think about whether a flame or a car could be called living and say which characteristics fail.",
+        "family_friendly_science_explanation": "Scientists say something is alive when it moves, respires, senses its surroundings, controls its internal conditions, grows, reproduces, gets rid of waste and takes in nutrition. Respiration is not breathing. Breathing moves air in and out of the body, while respiration is the chemical process in every cell that releases energy from food.",
+        "resources": [
+          {
+            "title": "Edexcel International GCSE Biology (2017) - Pearson qualifications",
+            "url": "https://qualifications.pearson.com/en/qualifications/edexcel-international-gcses/international-gcse-biology-2017.html",
+            "note": "Use this to find the specification, past papers and mark schemes."
+          },
+          {
+            "title": "IGCSE Biology Revision - Save My Exams",
+            "url": "https://www.savemyexams.com/igcse/biology/",
+            "note": "Use this for revision notes and past paper questions after each topic."
+          },
+          {
+            "title": "Kingdom (biology) Facts for Kids - Kiddle",
+            "url": "https://kids.kiddle.co/Kingdom_(biology)",
+            "note": "Read the overview together and ask Emilia to name the five kingdoms."
+          }
+        ],
+        "student_pacing": "This was the first lesson, so Emilia is on pace. Emilia is enrolled for 25 of the expected 50 hours, and a second block of 25 hours will be needed to finish the course. I have asked for about one hour a week of past paper practice outside the lessons, starting in about two weeks.",
+        "current_unit": "Chapter 1 of the Edexcel International GCSE Biology specification: characteristics of living organisms and the five kingdoms.",
+        "student_glows": [
+          "Explained that respiration is not the same as breathing without being prompted.",
+          "Worked out minutes per mark for the exam papers.",
+          "Answered all five true or false statements correctly.",
+          "Arrived with a biology notebook and a clear goal of becoming a doctor."
+        ],
+        "student_grows": [
+          "Giving fuller answers in sentences.",
+          "Learning the full Mrs Gren list including control.",
+          "Finding out how and where the IGCSE exam will be taken."
+        ],
+        "assignments_outstanding": [],
+        "lesson_engagement": "Emilia was polite, attentive and willing to answer, even when the connection was poor, and joined in all the activities.",
+        "additional_notes": "Emilia is enrolled for 25 of the expected 50 hours. The exam is likely to be in May 2028 and the family needs to ask the CGA team how and where it will be taken. I am away for the week of about 14 December. Canvas and the Learning Lab remain the source of truth for grades, deadlines and submitted work.",
+        "dashboard_subject": "Biology",
+        "misconceptions": [],
+        "successful_strategies": [],
+        "reasoning_patterns": [],
+        "vocabulary_patterns": [],
+        "communication_patterns": [],
+        "confidence_patterns": [],
+        "accuracy_patterns": [],
+        "participation_patterns": [],
+        "skills_focus": [],
+        "independence_patterns": [],
+        "indicators": {}
+      },
+      "skills": [
+        {
+          "evidence": "Explained that respiration is not the same as breathing without being prompted.",
+          "source_field": "student_glows"
+        },
+        {
+          "evidence": "Worked out minutes per mark for the exam papers.",
+          "source_field": "student_glows"
+        },
+        {
+          "evidence": "Answered all five true or false statements correctly.",
+          "source_field": "student_glows"
+        },
+        {
+          "evidence": "Arrived with a biology notebook and a clear goal of becoming a doctor.",
+          "source_field": "student_glows"
+        },
+        {
+          "evidence": "Recalling prior learning from school",
+          "source_field": "strengths"
+        },
+        {
+          "evidence": "Working out minutes per mark quickly",
+          "source_field": "strengths"
+        },
+        {
+          "evidence": "Organisation and a clear goal of becoming a doctor",
+          "source_field": "strengths"
+        },
+        {
+          "evidence": "recalling the characteristics of living organisms",
+          "source_field": "skills_observed"
+        },
+        {
+          "evidence": "distinguishing respiration from breathing",
+          "source_field": "skills_observed"
+        },
+        {
+          "evidence": "calculating minutes per mark",
+          "source_field": "skills_observed"
+        },
+        {
+          "evidence": "using Zoom annotation tools",
+          "source_field": "skills_observed"
+        }
+      ],
+      "growing_next": [
+        {
+          "evidence": "Giving fuller answers in sentences.",
+          "source_field": "student_grows"
+        },
+        {
+          "evidence": "Learning the full Mrs Gren list including control.",
+          "source_field": "student_grows"
+        },
+        {
+          "evidence": "Finding out how and where the IGCSE exam will be taken.",
+          "source_field": "student_grows"
+        },
+        {
+          "evidence": "Giving fuller answers in sentences",
+          "source_field": "areas_for_growth"
+        },
+        {
+          "evidence": "Learning the full Mrs Gren list including control",
+          "source_field": "areas_for_growth"
+        },
+        {
+          "evidence": "Finding out how and where the exam will be taken",
+          "source_field": "areas_for_growth"
+        },
+        {
+          "evidence": "Draw memory icons for the eight characteristics, read the specification and find out how the exam will be taken.",
+          "source_field": "next_priority"
+        }
+      ]
+    }
+  ]
+}</script>
+<script>
+const DISCLAIMER = "This is a voluntary teaching resource created by Mr. Guevara to add as much value as possible for families and students. It is not a requirement of Crimson Global Academy, and other teachers may not provide anything similar — this is not part of what CGA officially offers. Please refer to the Learning Lab as the official Crimson Global Academy resource, where assignments, grades, deadlines, and formal progress reports are provided. The information here is supplementary and is not part of any official session report or progress report sent by the school.";
+
+const LINKEDIN_URL = "https://www.linkedin.com/in/diego-urrutia-guevara-150bb641/";
+
+const data = JSON.parse(document.getElementById('dashboard-v2-data').textContent);
+const name = data.student_first_name || "the student";
+
+function esc(s){
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+/* Some upstream data fields that are meant to be a list of short phrases were
+   saved either as a real JS/JSON array, OR (a data bug seen in a few student
+   files) as a single string holding a Python-repr list literal such as
+   "['phrase one', 'phrase two']". Both must render as natural prose, never as
+   raw bracket/quote syntax. This helper normalises either shape into a plain
+   array of strings; a normal sentence-shaped string is returned unchanged. */
+function parsePyListLiteral(str){
+  const trimmed = String(str).trim();
+  if (!/^\[[\s\S]*\]$/.test(trimmed)) return null;
+  const inner = trimmed.slice(1, -1).trim();
+  if (!inner) return [];
+  const parts = inner.split(/['"]\s*,\s*['"]/);
+  return parts.map(p => p.replace(/^\s*['"]/, "").replace(/['"]\s*$/, "").trim()).filter(Boolean);
+}
+
+function toArrayOfStrings(v){
+  if (Array.isArray(v)) return v.map(x => String(x).trim()).filter(Boolean);
+  if (typeof v === "string") {
+    const parsed = parsePyListLiteral(v);
+    if (parsed !== null) return parsed;
+  }
+  return null;
+}
+
+/* Join a list of short phrases into flowing prose: "a", "a and b", or
+   "a, b, and c". Returns "" for an empty/missing list so callers can hide
+   the field entirely instead of showing empty punctuation. */
+function joinProse(arr){
+  if (!arr || !arr.length) return "";
+  if (arr.length === 1) return arr[0];
+  if (arr.length === 2) return `${arr[0]} and ${arr[1]}`;
+  return `${arr.slice(0, -1).join(", ")}, and ${arr[arr.length - 1]}`;
+}
+
+/* Renders any field that might be a plain string, a real array, or the
+   Python-repr-list-as-string bug as clean prose text (HTML-escaped). */
+/* Capitalizes the first letter of a joined/flowing sentence without
+   touching the rest of the string (so mid-sentence proper nouns etc. are
+   left alone). Safe to call on an already-capitalized or empty string. */
+function capitalizeFirst(s){
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function proseField(v){
+  const asArray = toArrayOfStrings(v);
+  if (asArray !== null) return capitalizeFirst(esc(joinProse(asArray)));
+  return capitalizeFirst(esc(v || ""));
+}
+
+function footerHtml(){
+  return `<footer class="disclaimer">${esc(DISCLAIMER)}</footer>`;
+}
+
+const TARGET_ICON = `<svg class="target-icon" viewBox="0 0 64 64" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" stroke-width="4" opacity=".35"/>
+  <circle cx="32" cy="32" r="15" fill="none" stroke="currentColor" stroke-width="4" opacity=".55"/>
+  <circle cx="32" cy="32" r="4" fill="currentColor"/>
+</svg>`;
+
+function eyebrow(label){
+  return `<div class="eyebrow-label">${TARGET_ICON}${esc(label)}</div>`;
+}
+
+/* ---------------- OVERVIEW TAB ---------------- */
+function pickHeadlineQuote(latest, quotes){
+  const placeholder = /student reflection to capture/i;
+  const lv = latest && latest.student_voice ? String(latest.student_voice).trim() : "";
+  if (lv && !placeholder.test(lv)) {
+    return { quote: lv, session_date: latest.session_date, lesson_title: latest.lesson_title };
+  }
+  if (quotes && quotes.length) return quotes[0];
+  return null;
+}
+
+function renderOverview(){
+  const s = data.stats || {};
+  const latest = data.sessions[0] || {};
+  const quotes = data.voice_quotes || [];
+  const latestDate = latest.session_date || "";
+  const headlineQuote = pickHeadlineQuote(latest, quotes);
+
+  let html = `
+    ${eyebrow("Overview")}
+    <h2 class="panel-title">Overview</h2>
+    <p class="panel-sub">A quick snapshot of ${esc(name)}'s learning journey so far.</p>
+    <div class="stat-row">
+      <div class="stat"><div class="num">${s.sessions_logged ?? 0}</div><div class="label">Sessions logged</div></div>
+      <div class="stat"><div class="num">${s.distinct_skills_tried ?? 0}</div><div class="label">Distinct skills tried</div></div>
+      <div class="stat"><div class="num">${s.milestones_hit ?? 0}</div><div class="label">Milestones hit</div></div>
+    </div>
+    <div class="focus-row">
+      <div class="focus-card win"><div class="eyebrow">Big win</div>${esc(latest.big_win || "")}</div>
+      <div class="focus-card tonight"><div class="eyebrow">Try tonight</div>${esc((latest.home_support && latest.home_support[0]) || "")}</div>
+      <div class="focus-card edge"><div class="eyebrow">Growing edge</div>${esc((latest.growing_next && latest.growing_next[0] && latest.growing_next[0].evidence) || "")}</div>
+    </div>
+    ${headlineQuote ? `
+    <div class="focus-card voice" style="border-left:4px solid var(--accent);background:var(--accent-wash);margin-bottom:18px;">
+      <div class="eyebrow">In ${esc(name)}'s own words</div>
+      <blockquote style="margin:2px 0 6px;font-family:var(--font-display);font-size:1.1rem;font-style:italic;color:var(--ink);">&ldquo;${esc(headlineQuote.quote)}&rdquo;</blockquote>
+      <div class="interp" style="font-size:0.85rem;color:var(--ink-2);">From "${esc(headlineQuote.lesson_title || "")}" (${esc(headlineQuote.session_date || "")})</div>
+    </div>` : ""}
+    <div class="card">
+      <h3>Since we last looked</h3>
+      <p>${latestDate ? `<strong>As of ${esc(latestDate)}</strong> — ` : ""}${esc(latest.raw_session && latest.raw_session.progress_since_last_update && Array.isArray(latest.raw_session.progress_since_last_update) ? latest.raw_session.progress_since_last_update[0] : (latest.raw_session ? latest.raw_session.progress_since_last_update : "") || "")}</p>
+    </div>
+    <div class="card">
+      <h3>What this lesson was about</h3>
+      <p>${latestDate ? `<strong>As of ${esc(latestDate)}</strong> — ` : ""}${esc(latest.family_friendly_science_explanation || latest.summary || "")}</p>
+    </div>
+    <div class="card">
+      <h3>More in ${esc(name)}'s own words</h3>
+      ${quotes.map(q => `
+        <div class="quote-card">
+          <blockquote>&ldquo;${esc(q.quote)}&rdquo;</blockquote>
+          <div class="interp">From "${esc(q.lesson_title)}" (${esc(q.session_date)}) — this shows ${esc(name)} thinking in their own terms, not just repeating a definition.</div>
+        </div>`).join("")}
+    </div>
+  `;
+  document.getElementById('tab-overview').innerHTML = html + footerHtml();
+}
+
+/* ---------------- PROGRESS TAB (chart) ---------------- */
+const STAGE_Y = {Emerging: 3, Developing: 2, Growing: 1, Secure: 0};
+const STAGE_RANK = {Emerging: 0, Developing: 1, Growing: 2, Secure: 3};
+const STAGE_BY_RANK = ["Emerging", "Developing", "Growing", "Secure"];
+// A small categorical palette assigned by thread INDEX (not by name), so it
+// works for any student's thread names. Chosen for strong hue separation
+// (blue / rust-orange / violet / mustard-gold) rather than shades of one
+// colour, while staying muted/earthy so it still sits inside the warm,
+// cream "earth" theme. Distinct in both hue and lightness so the lines
+// stay tellable apart for common red-green colour vision deficiencies too.
+const THREAD_PALETTE = ["#2A6F8F", "#B5551F", "#6B4C9A", "#B58900"];
+function colorForThread(index){
+  return THREAD_PALETTE[index % THREAD_PALETTE.length];
+}
+const LINE_COL = "#1D211C24";
+const INK2 = "#4A5148";
+const INK3 = "#757C72";
+
+function shortDate(iso){
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("en-GB", {day:"numeric", month:"short"});
+}
+
+function buildChartSVG(threads){
+  const W = 780, H = 300, padL = 140, padR = 20, padT = 20, padB = 46;
+  const allDates = [...new Set(Object.values(threads).flat().map(p => p.session_date_iso))].sort();
+  const x = d => {
+    const idx = allDates.indexOf(d);
+    const n = Math.max(allDates.length - 1, 1);
+    return padL + (idx / n) * (W - padL - padR);
+  };
+  const rowH = (H - padT - padB) / 4;
+  const y = stage => padT + STAGE_Y[stage] * rowH + rowH / 2;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="var(--font-ui),sans-serif">`;
+
+  // Stage rows: qualitative stage NAMES are the only y-axis labels, never numbers.
+  ["Secure","Growing","Developing","Emerging"].forEach((stage, i) => {
+    const yy = padT + i * rowH + rowH / 2;
+    svg += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="${LINE_COL}" stroke-width="1" stroke-dasharray="3 5"/>`;
+    svg += `<text x="8" y="${yy + 4}" font-size="12" fill="${INK2}" font-weight="700">${stage}</text>`;
+  });
+
+  // Dated x-axis: a step line under the plot with a dashed tick per session date.
+  const axisY = padT + 4 * rowH;
+  svg += `<line x1="${padL}" y1="${axisY}" x2="${W - padR}" y2="${axisY}" stroke="${LINE_COL}" stroke-width="1"/>`;
+  allDates.forEach(d => {
+    const px = x(d);
+    svg += `<line x1="${px}" y1="${axisY}" x2="${px}" y2="${axisY + 6}" stroke="${LINE_COL}" stroke-width="1" stroke-dasharray="2 3"/>`;
+    svg += `<text x="${px}" y="${axisY + 22}" font-size="10" fill="${INK3}" text-anchor="middle" transform="rotate(0 ${px} ${axisY+22})" font-family="var(--font-data),monospace">${shortDate(d)}</text>`;
+  });
+
+  let pointId = 0;
+  const points = [];
+  Object.entries(threads).forEach(([threadName, pts], threadIndex) => {
+    const color = colorForThread(threadIndex);
+    const sorted = [...pts].sort((a,b) => a.session_date_iso.localeCompare(b.session_date_iso));
+    // Step line (not a smooth diagonal): holds the current stage until the
+    // next dated observation, which better reflects a qualitative plateau.
+    let path = "";
+    sorted.forEach((p, i) => {
+      const px = x(p.session_date_iso), py = y(p.stage);
+      if (i === 0) { path += `M${px},${py} `; }
+      else {
+        const prevPx = x(sorted[i-1].session_date_iso);
+        path += `L${px},${y(sorted[i-1].stage)} L${px},${py} `;
+      }
+    });
+    svg += `<path d="${path.trim()}" fill="none" stroke="${color}" stroke-width="2.5" opacity="0.85"/>`;
+    sorted.forEach(p => {
+      const px = x(p.session_date_iso), py = y(p.stage);
+      const id = "pt" + (pointId++);
+      points.push({id, threadName, ...p});
+      svg += `<circle cx="${px}" cy="${py}" r="5" fill="${color}" stroke="${'#FBF9F3'}" stroke-width="1.5" style="cursor:pointer" onclick="showEvidence('${id}')"/>`;
+    });
+  });
+  svg += `</svg>`;
+  window.__chartPoints = points;
+  return svg;
+}
+
+function showEvidence(id){
+  const p = (window.__chartPoints || []).find(pt => pt.id === id);
+  const el = document.getElementById('evidence-pop');
+  if (!el || !p) return;
+  el.innerHTML = `<strong>${esc(p.threadName)} — ${esc(p.stage)}</strong> (${esc(p.session_date)}, "${esc(p.lesson_title)}")<br>${esc(p.evidence)}`;
+  el.classList.add('show');
+  el.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+function renderProgress(){
+  const threads = data.skill_threads || {};
+  const lp = data.learning_profile || {};
+  const milestones = data.milestones || [];
+
+  let legend = Object.keys(threads).map((k, i) =>
+    `<span><span class="legend-dot" style="background:${colorForThread(i)}"></span>${esc(k)}</span>`
+  ).join(" &nbsp; ");
+
+  let html = `
+    ${eyebrow("Progress")}
+    <h2 class="panel-title">Progress</h2>
+    <p class="panel-sub">These are Mr. Guevara's qualitative professional observations from lessons, not a score or grade. Click any point on the chart for the evidence it is drawn from.</p>
+    <div class="card chart-card">
+      <h3>Skills over time (qualitative stages)</h3>
+      ${buildChartSVG(threads)}
+      <div class="chart-legend">${legend}</div>
+      <div id="evidence-pop" class="evidence-pop"></div>
+    </div>
+    <div class="card">
+      <h3>Moments that mattered</h3>
+      ${milestones.map(m => `
+        <div class="milestone">
+          <div class="dot"></div>
+          <div>
+            <div class="date">${esc(m.session_date)}</div>
+            <strong>${esc(m.title)}</strong>
+            <div>${esc(m.detail)}</div>
+          </div>
+        </div>`).join("")}
+    </div>
+    <div class="card">
+      <h3>Learning profile</h3>
+      <div class="profile-grid" style="margin-top:10px;">
+        ${[
+          ["Engages best when", lp.engages_best_when],
+          ["Responds well to", lp.responds_well_to],
+          ["Often curious about", lp.often_curious_about],
+          ["Currently trying", lp.currently_trying],
+        ].map(([label, value]) => {
+          const text = proseField(value);
+          if (!text) return "";
+          return `<div class="item"><div class="k">${esc(label)}</div>${text}</div>`;
+        }).join("")}
+      </div>
+    </div>
+  `;
+  document.getElementById('tab-progress').innerHTML = html + footerHtml();
+}
+
+/* ---------------- HELP AT HOME TAB ---------------- */
+function renderHelpAtHome(){
+  const latest = data.sessions[0] || {};
+  const askQuestions = (latest.raw_session && latest.raw_session.next_steps) || [];
+  let html = `
+    ${eyebrow("Help at Home")}
+    <h2 class="panel-title">Help at Home</h2>
+    <p class="panel-sub">This is optional and conversational, not homework — a few ideas if a moment naturally comes up at home.</p>
+    <div class="card">
+      <h3>Ask ${esc(name)}</h3>
+      <ul class="plain">
+        ${askQuestions.slice(0,3).map(q => `<li>${esc(q)}</li>`).join("")}
+      </ul>
+    </div>
+    <div class="card">
+      <h3>This week's home-support idea</h3>
+      <ul class="plain">${(latest.home_support || []).map(h => `<li>${esc(h)}</li>`).join("")}</ul>
+    </div>
+    <div class="card">
+      <h3>Resources from the latest session</h3>
+      ${(latest.resources || []).map(r => `
+        <div class="resource-link">
+          <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>
+          <div class="note">${esc(r.note)}</div>
+        </div>`).join("")}
+    </div>
+  `;
+  document.getElementById('tab-helpathome').innerHTML = html + footerHtml();
+}
+
+/* ---------------- SESSIONS TAB ---------------- */
+function renderSessions(){
+  const sessions = data.sessions || [];
+  let html = `
+    ${eyebrow("Sessions")}
+    <h2 class="panel-title">Sessions</h2>
+    <p class="panel-sub">Full chronological session history, newest first. Click any session to expand it.</p>
+  `;
+  sessions.forEach(s => {
+    html += `
+      <details class="session">
+        <summary>${esc(s.lesson_title)}<span class="sdate">${esc(s.session_date)}</span></summary>
+        <div class="session-body">
+          <h4>Summary</h4><p>${esc(s.summary)}</p>
+          <h4>Strengths / glows</h4>
+          <ul class="plain">${(s.skills || []).map(sk => `<li>${esc(sk.evidence)}</li>`).join("")}</ul>
+          <h4>Growing next</h4>
+          <ul class="plain">${(s.growing_next || []).map(g => `<li>${esc(g.evidence)}</li>`).join("")}</ul>
+          <h4>Resources</h4>
+          ${(s.resources || []).map(r => `<div class="resource-link"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><div class="note">${esc(r.note)}</div></div>`).join("")}
+        </div>
+      </details>
+    `;
+  });
+  document.getElementById('tab-sessions').innerHTML = html + footerHtml();
+}
+
+/* ---------------- ABOUT TAB ---------------- */
+function renderAbout(){
+  const chips = ["Primary &amp; Secondary","IGCSE &middot; A-Level &middot; US Diploma","UK &middot; Spain &middot; New Zealand","Students on 4 continents","Teacher training"];
+  const html = `
+    ${eyebrow("About")}
+    <h2 class="panel-title">About Mr. Guevara</h2>
+    <p class="panel-sub">The teacher behind this dashboard.</p>
+    <div class="card about-hero">
+      ${eyebrow("The teacher behind this dashboard")}
+      <div class="about-photo-wrap">
+        <img class="about-photo" src="https://educadug.github.io/discovery-lab/about/diego.jpg?v=2" alt="Diego Urrutia Guevara" loading="lazy">
+      </div>
+      <h3 class="about-heading">Diego Urrutia Guevara</h3>
+      <p class="about-subheading">Studied in Norway, Spain and New Zealand. Taught in the UK, Spain and New Zealand. Now teaching students across four continents.</p>
+      <div class="about-chip-row">${chips.map(c => `<span class="about-chip">${c}</span>`).join("")}</div>
+      <a class="btn-linkedin" href="${esc(LINKEDIN_URL)}" target="_blank" rel="noopener noreferrer">Connect on LinkedIn</a>
+    </div>
+    <div class="card">
+      <h3>About Diego</h3>
+      <p>Diego's classroom has never had one nationality in it. He studied in Norway, Spain and New Zealand, taught in both private and state schools in the United Kingdom and Spain, and now teaches from New Zealand to students in Europe, the United States, Japan, China, Southeast Asia and Australia.</p>
+      <p>That range is not a travel list — it is the substance of how he teaches. Students arrive from different school systems, different languages and very different ideas of what a good answer looks like. Teaching all of them well means building lessons around thinking rather than around the habits of any single curriculum.</p>
+      <p>Before and alongside education, Diego worked in international consultancy and biodiversity. He believes students learn best when knowledge is connected to real problems, investigation, decision-making and the world beyond the classroom.</p>
+      <p>Running through all of it is a particular interest in the thoughtful use of technology and AI in education. Discovery Lab is where that becomes something you can click: simulations and investigations where students experiment, decide, test ideas and learn by doing.</p>
+    </div>
+    <div class="card about-closing">
+      <h3>Full background and experience</h3>
+      <p>Qualifications, teaching history and professional work are all on LinkedIn. Connect there, or get in touch.</p>
+      <a class="btn-linkedin" href="${esc(LINKEDIN_URL)}" target="_blank" rel="noopener noreferrer">View LinkedIn profile</a>
+    </div>
+  `;
+  document.getElementById('tab-about').innerHTML = html + footerHtml();
+}
+
+renderOverview();
+renderProgress();
+renderHelpAtHome();
+renderSessions();
+renderAbout();
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
